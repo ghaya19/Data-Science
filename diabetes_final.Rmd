@@ -1,0 +1,488 @@
+---
+title: "Predicting the diabetes readmission rate and number of medication taken"
+author: "ANG BENG SHEN"
+date: "1/10/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Team Members:
+
++ Ang Beng Shen S2127357
++ Ghayathri A/P Ramanathan 17192245
++ Mohd Fauzi Bin Jamaluddin S2125740
++ Amalin Khairunnisa binti Abdullah 17125661
++ Anere Goodness Ayobami S2039808
+
+
+
+## Predicting the diabetes readmission rate and number of medication taken
+
+Diabetes mellitus is a type of non-communicable disease that has been listed as one of the major factors that cause death worldwide (WHO, 2020). Due to ineffective disease management, numerous patients need to be hospitalized again in hospitals after being discharged for particular days. The Centers for Medicare and Medicaid Services have implemented a 30-days readmission rate policy to track the efficiency of a hospital. However, some readmission of patients was caused by human mistakes such as wrong initial diagnosis, relapse and discharge too soon. Prediction tools aid us to predict the rate of diabetes patients' readmission and other diabetes-related outcomes. Hence, the hospitals can prevent overuse of medical resources and save it for the important usage of those in need (Shang et al., 2021).
+
+
+## Questions: 
+
+1. How much is the diabetes readmission rate? 
+
+2. What is the expected the number of medication taken? 
+
+3. What are the features that significantly influence the diabetes readmission rate and the number of medication in the prediction model?
+
+
+## Objective of processing this data set? 
+
+To develop an efficient readmission rate of diabetes patients and the number of medication prediction model. Since "Garbage in, garbage out". Data with low quality will impair the accuracy of prediction model.
+
+
+## Details of data set
+
+The data set contains 10 years of data from 130 US hospitals from 1999 to 2008. It was obtained from the UCI Machine Learning Repository. It contains 100000 observations and 55 features. The data set was prepared to study the factors that influence the readmission rate and other diabetes-related.
+
+
+
+## 1. Load dataset
+
+
+```{r cars}
+dir<-getwd()
+dir_data<- paste(dir,"/data/diabetic_data.csv",sep="")
+diabetes <- read.csv(file = dir_data, head=TRUE, sep=",")
+head(diabetes)
+```
+
+## 2. Explore dataset:
+
+## dimension:
+content
+structure
+summary
+
+```{r}
+
+head(diabetes) #To view the head of the variables with first 5 observations
+tail(diabetes) #To view the tail of the variables with last 5 observations.
+#View(diabetes) #To view in table form.
+ncol(diabetes) #There are 50 columns
+nrow(diabetes) #There 101766 rows
+dim(diabetes) #There are 101766 observations and 50 variables.
+str(diabetes) #There are 101766 observations and 50 variables. 
+summary(diabetes)
+
+library(dplyr)
+glimpse(diabetes)
+
+```
+
+# 3. Finding the missing values
+
+```{r}
+
+#is.na(diabetes) 
+#which(is.na(diabetes))
+colSums(is.na(diabetes))#It states that there are no NA in this dataset. However, there are observation labelled "?"
+
+```
+
+## Which section of the data do you need to tidy?
+
+## 4. Data cleansing: Remove non-useful or irrelevant columns
+
+```{r}
+diabetes1 <- subset(diabetes,select=-c(encounter_id, patient_nbr, examide, citoglipton,weight, payer_code, medical_specialty)) 
+str(diabetes1)
+head(diabetes1) 
+dim(diabetes1) # There are 101766 observations with 43 variables
+```
+
+## 5. Data cleansing: Remove "?" in each variables
+
+## 5.1 Variable : race
+
+```{r}
+diabetes2 <- diabetes1[diabetes1$race != "?",] # Number of observations drops by 2273
+head(diabetes2)
+summary(diabetes1$race) #There are 101766 observation for diabetes1$race
+summary(diabetes2$race) #There are 99493 observations for diabetes2$race
+```
+
+## 5.2 Variable:diagnosis_1
+
+```{r}
+diabetes2 <- diabetes2[diabetes2$diag_1 != "?",] # Number of observations drops by 19
+head(diabetes2)
+summary(diabetes$diag_1) #There are 101766 observation for diabetes$diag_1
+summary(diabetes2$diag_1) #There are 99139 observations for diabetes2$diag_1
+
+```
+
+## 5.3 Variable:diagnosis_2
+
+```{r}
+diabetes2 <- diabetes2[diabetes2$diag_2 != "?",] # No of observations drops by 335 (99474-99139)
+head(diabetes2)
+summary(diabetes$diag_2) #There are 101766 observation for diabetes$race
+summary(diabetes2$diag_2) #There are 99474 observations for diabetes2$race
+
+```
+
+## 5.4 Variable:diagnosis_3
+
+```{r}
+diabetes2 <- diabetes2[diabetes2$diag_3 != "?",] # No of observations drops by 1086 (99139 -98053)
+head(diabetes2)
+summary(diabetes$diag_3) #There are 101766 observation for diabetes$race
+summary(diabetes2$diag_3) #There are 98053 observations for diabetes2$race
+
+```
+
+After data cleaning, there are 3713 observation was removed. 
+The remaining number of observations are 98053.
+
+## 6. Binary representation of readmitted within 30 days
+
+"0" representation for NO readmission after 30 days
+"1" representation for readmission within 30 days
+```{r}
+diabetes2$readmittedbin <- ifelse(diabetes2$readmitted == "<30",1,0) 
+table(diabetes2$readmittedbin)
+
+```
+
+86987 no. of patients readmit after 30 days or no readmission
+11066 no. of patients readmit within 30 days
+
+## 7.1 To identify class of the variables
+
+```{r}
+library(dplyr)
+glimpse(diabetes2)
+names(diabetes2[c(7:13,17)])
+class(diabetes2$time_in_hospital)
+class(diabetes2$num_lab_procedures)
+names(diabetes2[c(1:6,14:16,18:44)])
+class(diabetes2$diag_2)
+class(diabetes2$readmitted)
+
+```
+
+## 7.2 To make factor of levels (Converting Categorical Attributes to Factors)
+
+cbind columns with numerical variables with diabetes2[c(7:13,17)] and categorical variables with 
+
+```{r}
+head(diabetes2[c(1:6,14:16,18:44)])
+diabetes3 <- cbind(diabetes2[c(7:13,17)], lapply(diabetes2[c(1:6,14:16,18:44)],factor))
+head(diabetes3)
+
+```
+
+## 8. EDA - To examine readmission frequency categorized by various variables.
+
+## 8.1 Readmission time interval
+
+```{r}
+table(diabetes3$readmitted)
+prop.table(table(diabetes3$readmitted))
+
+
+```
+
+47% of patients were readmitted, with 35% of the readmission occurred after 30 days.
+
+
+
+## 9. Question 1: Will the patient readmitted within 30 days (Classification)
+
+
+## 9.0 Data Balancing
+
+
+## 9.0.1 Check the data for under-sampling
+
+```{r}
+
+table(diabetes3$readmittedbin)
+prop.table(table(diabetes3$readmittedbin))
+
+```
+
+Only 11% of the data have readmission within 30 days, the remaining 89% have readmission after 30 days or no readmission. This is an imbalance dataset and might impair the accuracy of prediction model, therefore data balancing is necessary.
+
+## 9.0.1 Balancing the Data
+
+Many studies have shown that the results of balanced data have higher accuracy than imbalanced data. For data balancing, the methods "ROSE" (Random Over Sampling Examples) is adopted. "ROSE" uses bootstrapping to increase artificial samples from the feature space neighbor around the minority class 1 (“<30”) and ‘Undersampling’ that reduces the number of observations from majority class 0 (“>30” and “No”) to make the data set balanced. 
+
+```{r}
+library("ROSE")
+set.seed(100)
+dataTrain0 <- ROSE(readmittedbin ~., data = diabetes3)$data
+table(dataTrain0$readmittedbin)
+
+```
+
+## 9.1 Splitting data into training set and test set.
+
+```{r}
+library(caret)
+set.seed(100)
+indexTrain <- createDataPartition(dataTrain0$readmittedbin, p=.8, list=FALSE)
+dataTrain <-dataTrain0[indexTrain,]
+dataTest <- dataTrain0[-indexTrain,]
+
+```
+
+## Examining the frequency of readmission in training set and test set
+
+training set:
+
+```{r}
+table(dataTrain$readmittedbin)
+prop.table(table(dataTrain$readmittedbin))
+
+```
+
+test set:
+
+```{r}
+table(dataTest$readmittedbin)
+prop.table(table(dataTest$readmittedbin))
+
+```
+
+## 9.2.1 Classification Model 1 - Logistic Regression
+
+## Training the Logistic Regression
+
+```{r warning = FALSE}
+
+logit.diabetes<-train(readmittedbin ~ time_in_hospital + num_lab_procedures + num_procedures + num_medications + number_outpatient + number_emergency + number_inpatient + race + age + admission_type_id + discharge_disposition_id + admission_source_id + number_diagnoses + max_glu_serum + A1Cresult + metformin + insulin, data = dataTrain, method = "glm", family = "binomial")
+
+```
+
+
+## Prediction using test data
+
+```{r}
+logit_pred <- predict(logit.diabetes, dataTest)
+
+```
+
+## Confusion Matrix
+
+```{r}
+confusionMatrix(logit_pred , dataTest$readmittedbin)
+
+```
+
+
+## 9.2.2 Classification Model 2 - Decision Tree
+
+Running feature selection algorithm on such a big dataset takes a long time. Fortunately, similar study suggested 17 important features after running feature selection algorithm on the dataset and we will build our classification algorithm using these 17 features to save our resources.
+
+## Training the decision tree
+
+```{r}
+library(rpart)
+dTree_bin <- rpart(readmittedbin ~ time_in_hospital + num_lab_procedures + num_procedures + num_medications + number_outpatient + number_emergency + number_inpatient + race + age + admission_type_id + discharge_disposition_id + admission_source_id + number_diagnoses + max_glu_serum + A1Cresult + metformin + insulin, data = dataTrain, method="class", minsplit = 1, minbucket = 1, cp = 0.001)
+
+
+```
+
+## plot the decision tree model
+
+```{r}
+library(rpart.plot)
+par(mar=c(2,2,0.25,1))
+plot(dTree_bin, branch = 0.4,uniform = TRUE, compress = TRUE)
+text(dTree_bin, pretty = 0)
+
+
+rpart.plot(dTree_bin)
+
+
+```
+
+## predict using test data
+
+```{r}
+rpart.predict_bin <- predict(dTree_bin, newdata = dataTest,type="class")
+head(rpart.predict_bin)
+
+```
+
+## Confusion Matrix
+
+```{r}
+cfMat_bin<-confusionMatrix(rpart.predict_bin, dataTest$readmittedbin)
+cfMat_bin
+
+```
+
+## 9.2.3 Classification Model 3 - Random Forest
+
+## Training the random forest
+
+```{r}
+
+library(randomForest)
+rf.diabetes <- randomForest(readmittedbin ~ time_in_hospital + num_lab_procedures + num_procedures + num_medications + number_outpatient + number_emergency + number_inpatient + race + age + admission_type_id + discharge_disposition_id + admission_source_id + number_diagnoses + max_glu_serum + A1Cresult + metformin + insulin, data = dataTrain, method="class", importance=TRUE)
+
+```
+
+## The random forest model summary
+
+```{r}
+rf.diabetes
+
+```
+
+## predict using test data
+
+```{r}
+rf.predict_bin <- predict(rf.diabetes,newdata =dataTest)
+
+```
+
+## Confusion Matrix
+
+```{r}
+rf.cm <- confusionMatrix(rf.predict_bin,dataTest$readmittedbin)
+rf.cm
+
+```
+
+## Model Comparison
+
+```{r}
+library(ROCR)
+
+roc.curve(dataTest$readmittedbin, logit_pred, plotit = T, col = "blue")
+roc.curve(dataTest$readmittedbin, rpart.predict_bin, plotit = T, add.roc = T, col = "red")
+roc.curve(dataTest$readmittedbin, rf.predict_bin, plotit = T, add.roc = T, col = "green")
+
+legend(.8, .4, legend = c("LG", "DT", "RF"),
+       col = c("blue", "red", "green"),
+      lty = c(1,2,3,4), ncol = 1)
+
+
+```
+
+Based on the ROC curve, we could conclude that the Random Forest is the best prediction algorithm.
+
+## Determine Predicted Readmission Rate using the original Dataset with the Random Forest Model
+
+```{r}
+rf.predict_bin2 <- predict(rf.diabetes,newdata =diabetes3)
+
+```
+
+```{r}
+rf.cm <- confusionMatrix(rf.predict_bin2,diabetes3$readmittedbin)
+rf.cm
+
+```
+
+## Determine Predicted Readmission Rate using the original Dataset with the Random Forest Model
+
+Find the importance features that significantly influence the diabetes readmission rate:
+
+```{r}
+library(caret)
+# estimate and plot variable importance
+varImp(rf.diabetes)
+
+varImpPlot(rf.diabetes)
+
+```
+
+## Conclusions:
+
+1.Based on the accuracy of the prediction, the random forest algorithm is the best model to predict readmission of     diabetes patient.
+
+2.The random forest model developed could be used to predict readmission of diabetes patient with an accuracy of        82%.
+
+3.From the dataset, we predict that the readmission rate of diabetes patient is 11.4% while the actual readmission       rate is 11.3%.
+
+
+## 10. Question 2: What is the expected the number of medication taken? 
+
+## 10.1 Splitting data into training set and test set.
+```{r}
+dfRegression <- diabetes3
+
+dfRegression$max_glu_serum <- dfRegression$max_glu_serum  %>% recode_factor('>300' = '>200')
+
+dfRegression <- dfRegression %>% filter(max_glu_serum != 'None') %>% drop()
+
+dfRegression$age <- factor(dfRegression$age, order = TRUE)
+
+dfRegression$insulin <- dfRegression$insulin  %>% recode_factor('Steady' = 'Yes')
+dfRegression$insulin <- dfRegression$insulin  %>% recode_factor('Up' = 'Yes')
+dfRegression$insulin <- dfRegression$insulin  %>% recode_factor('Down' = 'Yes')
+
+
+dfRegression$metformin <- dfRegression$metformin  %>% recode_factor('Steady' = 'Yes')
+dfRegression$metformin <- dfRegression$metformin  %>% recode_factor('Up' = 'Yes')
+dfRegression$metformin <- dfRegression$metformin  %>% recode_factor('Down' = 'Yes')
+
+set.seed(1121)
+sampleRow <- sample(1:nrow(dfRegression), 0.8*nrow(dfRegression))
+
+training_set <- dfRegression[sampleRow, ]
+testing_set <- dfRegression[-sampleRow, ] 
+```
+
+## Check the dimension in training set and test set
+
+training set:
+
+```{r}
+dim(training_set)
+```
+
+test set:
+  
+```{r}
+dim(testing_set)
+```
+
+## Training the linear regression
+```{r}
+modelling <- lm(data = training_set, formula = num_medications ~ number_diagnoses + num_procedures + time_in_hospital + diabetesMed + max_glu_serum + age + gender + insulin + change)
+
+anova(modelling)
+summary(modelling)
+```
+
+## Predict using test data
+
+```{r}
+library(caret)
+prediction <- predict(modelling, testing_set)
+```
+
+## Prediction evaluation
+
+```{r}
+caret::RMSE(prediction,testing_set$num_medications)
+
+caret::R2(prediction,testing_set$num_medications)
+```
+
+## Conclusion
++ Anova test shows that all the factors have significant relationship with the number of medications taken.
++ Based on R-squared, the prediction model only able to explain around 40% of variability in the outcome.
++ RMSE also quite high which indicate the error rate in predicting the outcome value is high.
++ So, based on these findings, seems that this model unable to predict expected number of medications taken accurately.
+
+
+## References:
+
+Shang, Y., Jiang,K., Wang, L., Zhang, Z., Zhou, S., Liu, Y., Dong, J., & Wu, H. (2021). The 30-days hospital readmission risk in diabetic patients: predictive modeling with machine learning classifiers. BMC Medical Informatics and Decision Making, 21(S2). https://doi.org/10.1186/s12911-021-01423-y
+
+
+World Health Organization (WHO). (2020). The top 10 causes of death. https://www.who.int/news-room/fact-sheets/detail/the-top-10-causes-of-death
